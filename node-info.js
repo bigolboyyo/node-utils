@@ -1,7 +1,7 @@
 import os from "os";
 import process from "process";
 
-const gatherOSInfo = () => {
+const gatherOSInfo = async () => {
   const {
     hostname,
     userInfo,
@@ -53,17 +53,17 @@ const gatherOSInfo = () => {
   }
 };
 
-const gatherProcessInfo = () => {
+const gatherProcessInfo = async () => {
   try {
     const { execPath, version, versions, title, argv, execArgv, pid } = process;
     const processInfo = {
-      execPath: execPath,
-      version: version,
-      versions: versions,
-      title: title,
-      argv: argv,
-      execArgv: execArgv,
-      pid: pid,
+      execPath,
+      version,
+      versions,
+      title,
+      argv,
+      execArgv,
+      pid,
     };
 
     return processInfo;
@@ -84,16 +84,15 @@ const gatherers = {
   env: gatherEnvInfo,
 };
 
-const gatherNodeInfo = (selectors = ["all"]) => {
+const gatherNodeInfo = async (selectors = ["all"]) => {
   if (typeof selectors === "string") selectors = [selectors];
 
   const systemInfo = {};
-
   const isAll = selectors.includes("all");
 
   for (const [flag, fn] of Object.entries(gatherers)) {
     if (isAll || selectors.includes(flag)) {
-      systemInfo[flag] = fn();
+      systemInfo[flag] = await fn();
     }
   }
 

@@ -1,4 +1,4 @@
-import fs from "fs";
+import fs from "fs/promises";
 import path from "path";
 
 const MODE_MAP = {
@@ -7,7 +7,7 @@ const MODE_MAP = {
   execute: fs.constants.X_OK,
 };
 
-const checkAccess = (target, modes = "write", detailed = false) => {
+const checkAccess = async (target, modes = "write", detailed = false) => {
   if (typeof modes === "string") modes = [modes];
 
   if (detailed) {
@@ -22,7 +22,7 @@ const checkAccess = (target, modes = "write", detailed = false) => {
         );
       }
       try {
-        fs.accessSync(target, flag);
+        await fs.access(target, flag);
         results[mode] = true;
       } catch {
         results[mode] = false;
@@ -43,7 +43,7 @@ const checkAccess = (target, modes = "write", detailed = false) => {
     }, 0);
 
     try {
-      fs.accessSync(target, flags);
+      await fs.access(target, flags);
       return true;
     } catch {
       return false;
@@ -51,9 +51,9 @@ const checkAccess = (target, modes = "write", detailed = false) => {
   }
 };
 
-const countFilesSync = (dirPath) => {
+const countFiles = async (dirPath) => {
   try {
-    const files = fs.readdirSync(dirPath);
+    const files = await fs.readdir(dirPath);
     return files.length;
   } catch (error) {
     console.error(`Error reading directory ${dirPath}:`, error);
@@ -61,9 +61,9 @@ const countFilesSync = (dirPath) => {
   }
 };
 
-const getFileSize = (filePath) => {
+const getFileSize = async (filePath) => {
   try {
-    const stats = fs.statSync(filePath);
+    const stats = await fs.stat(filePath);
     if (stats.isFile()) {
       return stats.size;
     }
@@ -74,18 +74,18 @@ const getFileSize = (filePath) => {
   }
 };
 
-const getDirSize = (dirPath) => {
+const getDirSize = async (dirPath) => {
   let totalSize = 0;
 
   try {
-    const files = fs.readdirSync(dirPath);
+    const files = await fs.readdir(dirPath);
 
     for (const file of files) {
       const filePath = path.join(dirPath, file);
       let stats;
 
       try {
-        stats = fs.statSync(filePath);
+        stats = await fs.stat(filePath);
       } catch (err) {
         if (err.code === "EACCES") {
           // Permission denied, skip this file/dir but keep going
@@ -97,7 +97,7 @@ const getDirSize = (dirPath) => {
       if (stats.isFile()) {
         totalSize += stats.size;
       } else if (stats.isDirectory()) {
-        const subdirSize = getDirSize(filePath);
+        const subdirSize = await getDirSize(filePath);
         if (subdirSize !== -1) {
           totalSize += subdirSize;
         }
@@ -109,18 +109,17 @@ const getDirSize = (dirPath) => {
       return -1; // Access denied on top-level dir
     }
     if (error.code === "ENOENT") {
-      return;
+      return -1;
     }
-
     return -1;
   }
 
   return totalSize;
 };
 
-const isDirEmpty = (dirPath) => {
+const isDirEmpty = async (dirPath) => {
   try {
-    const files = fs.readdirSync(dirPath);
+    const files = await fs.readdir(dirPath);
     return files.length === 0;
   } catch (error) {
     if (error.code === "ENOENT") {
@@ -132,9 +131,9 @@ const isDirEmpty = (dirPath) => {
   }
 };
 
-const getFileType = (targetPath) => {
+const getFileType = async (targetPath) => {
   try {
-    const stats = fs.lstatSync(targetPath); // lstat for symlinks info
+    const stats = await fs.lstat(targetPath);
     if (stats.isFile()) return "file";
     if (stats.isDirectory()) return "directory";
     if (stats.isSymbolicLink()) return "symlink";
@@ -149,33 +148,40 @@ const getFileType = (targetPath) => {
   }
 };
 
-const listDir = (dirPath) => {
+const listDir = async (dirPath) => {
   try {
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
 
-    return entries.map((entry) => {
-      const fullPath = path.join(dirPath, entry.name);
-      let size;
+    const results = await Promise.all(
+      entries.map(async (entry) => {
+        const fullPath = path.join(dirPath, entry.name);
+        let size;
 
-      if (entry.isFile()) {
-        try {
-          size = fs.statSync(fullPath).size;
-        } catch {
+        if (entry.isFile()) {
+          try {
+            const stat = await fs.stat(fullPath);
+            size = stat.size;
+          } catch {
+            size = null;
+          }
+        } else if (entry.isDirectory()) {
+          const dirSize = await getDirSize(fullPath);
+          size = dirSize === -1 ? "access denied" : dirSize;
+        } else {
           size = null;
         }
-      } else if (entry.isDirectory()) {
-        const dirSize = getDirSize(fullPath);
-        size = dirSize === -1 ? "access denied" : dirSize;
-      } else {
-        size = null;
-      }
 
-      return {
-        name: entry.name,
-        type: getFileType(fullPath),
-        size,
-      };
-    });
+        const type = await getFileType(fullPath);
+
+        return {
+          name: entry.name,
+          type,
+          size,
+        };
+      })
+    );
+
+    return results;
   } catch (e) {
     console.error(`Error listing directory ${dirPath}:`, e.message);
     return [];
@@ -184,9 +190,10 @@ const listDir = (dirPath) => {
 
 export {
   checkAccess,
-  countFilesSync,
+  countFiles,
   getFileSize,
   getFileType,
   isDirEmpty,
   listDir,
+  getDirSize,
 };
