@@ -7,6 +7,10 @@ import {
   listDir,
 } from "../fs-info.js";
 import os from "os";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 (async () => {
   console.log(
@@ -44,7 +48,7 @@ import os from "os";
   );
   console.log(
     "Size of current script file:",
-    await getFileSize("fs-info-example.js"),
+    await getFileSize(path.join(__dirname, "fs-info-example.js")),
     "(bytes)"
   );
   console.log(
@@ -80,7 +84,10 @@ import os from "os";
       "-".repeat(25) +
       "\n"
   );
-  console.log("fs-info-example.js →", await getFileType("fs-info-example.js"));
+  console.log(
+    "fs-info-example.js →",
+    await getFileType(path.join(__dirname, "fs-info-example.js"))
+  );
   console.log("/home →", await getFileType(os.homedir()));
   console.log("/bin →", await getFileType("/bin"));
   console.log("/dev/sda →", await getFileType("/dev/sda"));
