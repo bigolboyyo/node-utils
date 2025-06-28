@@ -1,4 +1,4 @@
-import { gatherNodeInfo } from "../node-info.js";
+import { gatherNodeInfo } from "../src/node-info.js";
 
 (async () => {
   // You can pass a single string or an array of strings for specific flags

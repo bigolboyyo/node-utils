@@ -5,7 +5,7 @@ import {
   isDirEmpty,
   getFileType,
   listDir,
-} from "../fs-info.js";
+} from "../src/fs-info.js";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
