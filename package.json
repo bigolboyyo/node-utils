@@ -4,7 +4,8 @@
   "main": "node-info.js",
   "type": "module",
   "scripts": {
-    "fs-info": "node examples/fs-info-example.js"
+    "fs-info": "node examples/fs-info-example.js",
+    "node-info": "NODE_ENV=development node examples/node-info-example.js"
   },
   "keywords": [],
   "author": "",
